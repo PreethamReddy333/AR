@@ -1,74 +1,18 @@
 <!DOCTYPE html>
+
 <html>
   <head>
-    <title>AR Gesture Interaction</title>
+    <title>Gesture Interactions - A-Frame & AR.js</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="styles.css">
+
     <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    
-    <script>
-      AFRAME.registerComponent('gesture-handler', {
-        schema: {
-          enabled: { default: true }
-        },
-        
-        init: function () {
-          this.handleScale = this.handleScale.bind(this)
-          this.handleRotate = this.handleRotate.bind(this)
-          
-          this.isVisible = false
-          
-          this.el.addEventListener('markerFound', () => {
-            this.isVisible = true
-          })
-          
-          this.el.addEventListener('markerLost', () => {
-            this.isVisible = false
-          })
-          
-          const element = this.el.sceneEl
-          const hammer = new Hammer(element)
-          
-          hammer.get('pinch').set({ enable: true })
-          hammer.get('rotate').set({ enable: true })
-          
-          hammer.on('pinch', this.handleScale)
-          hammer.on('rotate', this.handleRotate)
-        },
-        
-        handleScale: function (event) {
-          if (!this.isVisible) return
-          
-          const currentScale = this.el.getAttribute('scale')
-          const scaleFactor = event.scale
-          
-          this.el.setAttribute('scale', {
-            x: currentScale.x * scaleFactor,
-            y: currentScale.y * scaleFactor,
-            z: currentScale.z * scaleFactor
-          })
-        },
-        
-        handleRotate: function (event) {
-          if (!this.isVisible) return
-          
-          const currentRotation = this.el.getAttribute('rotation') || { x: 0, y: 0, z: 0 }
-          
-          this.el.setAttribute('rotation', {
-            x: currentRotation.x,
-            y: currentRotation.y + event.rotation,
-            z: currentRotation.z
-          })
-        }
-      })
-    </script>
-    
-    <style>
-      body { margin: 0; overflow: hidden; }
-    </style>
+    <script src="gesture-detector.js"></script>
+    <script src="gesture-handler.js"></script>
   </head>
+
   <body>
     <a-scene
       arjs
@@ -81,10 +25,11 @@
       <a-assets>
         <a-asset-item
           id="bowser"
-          src="https://PreethamReddy333.github.io/AR/Box Combo w_ extra sauce.glb"
+          src="https://cdn.glitch.com/06bd98b4-97ee-4c07-a546-fe39ca205034%2Fbowser.glb"
         >
         </a-asset-item>
       </a-assets>
+
       <a-marker
         preset="hiro"
         raycaster="objects: .clickable"
