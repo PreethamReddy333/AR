@@ -50,7 +50,7 @@ AFRAME.registerComponent("gesture-handler", {
   },
 
   handleScale: function (event) {
-    if (this.isVisible) {
+   /*if (this.isVisible) {
       this.scaleFactor *=
         1 + event.detail.spreadChange / event.detail.startSpread;
 
@@ -61,7 +61,8 @@ AFRAME.registerComponent("gesture-handler", {
 
       this.el.object3D.scale.x = this.scaleFactor * this.initialScale.x;
       this.el.object3D.scale.y = this.scaleFactor * this.initialScale.y;
-      this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z;
+      this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z; */
+    
     }
   },
 });
