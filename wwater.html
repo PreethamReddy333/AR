@@ -1,53 +1,59 @@
 <!DOCTYPE html>
-
 <html>
   <head>
-    <title>Gesture Interactions - A-Frame & AR.js</title>
+    <title>Gesture Interactions - WebXR & Three.js</title>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
-
-    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="gesture-detector.js"></script>
-    <script src="gesture-handler.js"></script>
+    
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.rawgit.com/fcor/arjs-gestures/master/dist/gestures.js"></script>
   </head>
 
   <body>
     <a-scene
-      arjs
       embedded
-      renderer="logarithmicDepthBuffer: true;"
-      vr-mode-ui="enabled: false"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
       gesture-detector
       id="scene"
     >
       <a-assets>
-        <a-asset-item
-          id="bowser"
-          src="Box Combo w_ extra sauce.glb"
-        >
-        </a-asset-item>
+        <a-asset-item id="bowser" src="Box Combo w_ extra sauce.glb"></a-asset-item>
       </a-assets>
 
-      <a-marker
-        preset="hiro"
-        raycaster="objects: .clickable"
-        emitevents="true"
-        cursor="fuse: false; rayOrigin: mouse;"
-        id="markerA"
-      >
+      <a-marker preset="hiro">
         <a-entity
           id="bowser-model"
           gltf-model="#bowser"
           position="0 -0.5 0"
-          scale="5 5 5"
+          scale="3 3 3"
           class="clickable"
           gesture-handler
-        >
-        </a-entity>
+        ></a-entity>
       </a-marker>
+
       <a-entity camera></a-entity>
     </a-scene>
+
+    <script>
+      AFRAME.registerComponent('gesture-handler', {
+        init: function () {
+          this.el.addEventListener('gesturestart', function (event) {
+            // Handle gesture start
+          });
+          this.el.addEventListener('gesturechange', function (event) {
+            // Handle gesture change (scale and rotate)
+            const scale = event.detail.scale;
+            const rotation = event.detail.rotation;
+            this.setAttribute('scale', `${scale} ${scale} ${scale}`);
+            this.setAttribute('rotation', `${rotation.x} ${rotation.y} ${rotation.z}`);
+          });
+          this.el.addEventListener('gestureend', function (event) {
+            // Handle gesture end
+          });
+        }
+      });
+    </script>
   </body>
 </html>
