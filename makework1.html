@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Advanced WebXR AR Scene</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe-extras/7.0.0/aframe-extras.min.js"></script>
+    <script>
+        // Surface detection and reticle system
+        AFRAME.registerComponent('ar-surface-detection', {
+            init: function() {
+                this.xrHitTestSource = null;
+                this.viewerSpace = null;
+                this.refSpace = null;
+
+                this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
+                    this.viewerSpace = await this.el.sceneEl.renderer.xr.getSession().requestReferenceSpace('viewer');
+                    this.refSpace = await this.el.sceneEl.renderer.xr.getSession().requestReferenceSpace('local');
+                    this.xrHitTestSource = await this.el.sceneEl.renderer.xr.getSession().requestHitTestSource({
+                        space: this.viewerSpace
+                    });
+                });
+
+                this.el.sceneEl.renderer.xr.addEventListener('sessionend', () => {
+                    this.xrHitTestSource = null;
+                });
+            },
+
+            tick: function() {
+                if (this.el.sceneEl.is('ar-mode')) {
+                    if (this.xrHitTestSource && this.el.sceneEl.renderer.xr.getFrame()) {
+                        const hitTestResults = this.el.sceneEl.renderer.xr.getFrame().getHitTestResults(this.xrHitTestSource);
+                        if (hitTestResults.length > 0) {
+                            const hit = hitTestResults[0];
+                            const pose = hit.getPose(this.refSpace);
+                            this.el.setAttribute('visible', true);
+                            this.el.setAttribute('position', {
+                                x: pose.transform.position.x,
+                                y: pose.transform.position.y,
+                                z: pose.transform.position.z
+                            });
+                            // Update normal vector to align with surface
+                            const normalMatrix = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(pose.transform.orientation));
+                            const normal = new THREE.Vector3(0, 1, 0).applyMatrix3(normalMatrix);
+                            this.el.object3D.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+                        } else {
+                            this.el.setAttribute('visible', false);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Enhanced model placement and manipulation
+        AFRAME.registerComponent('ar-model-control', {
+            schema: {
+                model: { type: 'selector' }
+            },
+
+            init: function() {
+                this.isPlaced = false;
+                this.isDragging = false;
+                this.lastPosition = new THREE.Vector3();
+                this.dragOffset = new THREE.Vector3();
+                
+                // Place model on tap
+                this.el.addEventListener('click', () => {
+                    if (!this.isPlaced) {
+                        const reticlePosition = document.querySelector('#reticle').getAttribute('position');
+                        this.data.model.setAttribute('position', reticlePosition);
+                        this.data.model.setAttribute('visible', true);
+                        this.isPlaced = true;
+                        document.querySelector('#overlay').innerHTML = 'Model placed!<br>• Drag to move<br>• Pinch to scale<br>• Rotate with two fingers';
+                    }
+                });
+
+                // Touch event handlers for model manipulation
+                this.el.addEventListener('touchstart', this.onTouchStart.bind(this));
+                this.el.addEventListener('touchmove', this.onTouchMove.bind(this));
+                this.el.addEventListener('touchend', this.onTouchEnd.bind(this));
+            },
+
+            onTouchStart: function(event) {
+                if (event.touches.length === 1) {
+                    this.isDragging = true;
+                    this.lastPosition.copy(this.data.model.object3D.position);
+                }
+            },
+
+            onTouchMove: function(event) {
+                if (!this.isPlaced) return;
+
+                if (event.touches.length === 1 && this.isDragging) {
+                    // Single finger drag to move
+                    const touch = event.touches[0];
+                    const ray = new THREE.Raycaster();
+                    const mouse = new THREE.Vector2(
+                        (touch.clientX / window.innerWidth) * 2 - 1,
+                        -(touch.clientY / window.innerHeight) * 2 + 1
+                    );
+
+                    ray.setFromCamera(mouse, this.el.sceneEl.camera);
+                    const intersects = ray.intersectObjects([this.el.sceneEl.object3D], true);
+
+                    if (intersects.length > 0) {
+                        const point = intersects[0].point;
+                        this.data.model.object3D.position.copy(point);
+                    }
+                } else if (event.touches.length === 2) {
+                    // Two finger gesture for rotation and scaling
+                    const touch1 = event.touches[0];
+                    const touch2 = event.touches[1];
+                    
+                    const dist = Math.hypot(
+                        touch1.clientX - touch2.clientX,
+                        touch1.clientY - touch2.clientY
+                    );
+
+                    if (this.previousDist) {
+                        // Scale
+                        const scale = (dist / this.previousDist);
+                        const currentScale = this.data.model.object3D.scale.x;
+                        const newScale = THREE.MathUtils.clamp(currentScale * scale, 0.5, 5);
+                        this.data.model.object3D.scale.setScalar(newScale);
+
+                        // Rotation
+                        const angle = Math.atan2(
+                            touch2.clientY - touch1.clientY,
+                            touch2.clientX - touch1.clientX
+                        );
+                        
+                        if (this.previousAngle) {
+                            const deltaAngle = angle - this.previousAngle;
+                            this.data.model.object3D.rotation.y += deltaAngle;
+                        }
+                        this.previousAngle = angle;
+                    }
+                    this.previousDist = dist;
+                }
+            },
+
+            onTouchEnd: function() {
+                this.isDragging = false;
+                this.previousDist = null;
+                this.previousAngle = null;
+            }
+        });
+    </script>
+</head>
+<body>
+    <a-scene webxr="requiredFeatures: hit-test; optionalFeatures: dom-overlay; overlayElement: #overlay;"
+             renderer="colorManagement: true">
+        
+        <a-assets>
+            <a-asset-item id="model" src="https://cdn.glitch.global/addb5fe7-d705-44fd-a613-f856c9627bf6/donut2.glb"></a-asset-item>
+        </a-assets>
+
+        <!-- Camera -->
+        <a-entity camera position="0 1.6 0"></a-entity>
+        
+        <!-- Surface detection reticle -->
+        <a-entity id="reticle"
+                  ar-surface-detection
+                  geometry="primitive: ring; radiusInner: 0.04; radiusOuter: 0.05"
+                  material="color: #AD50FF; shader: flat"
+                  rotation="-90 0 0"
+                  visible="false">
+        </a-entity>
+
+        <!-- Main model -->
+        <a-entity id="ar-model"
+                  gltf-model="#model"
+                  ar-model-control="model: #ar-model"
+                  scale="3 3 3"
+                  visible="false">
+        </a-entity>
+
+        <!-- Lighting -->
+        <a-entity light="type: ambient; intensity: 0.5"></a-entity>
+        <a-entity light="type: directional; intensity: 0.8; castShadow: true" position="-1 1 0"></a-entity>
+
+    </a-scene>
+
+    <div id="overlay" style="position: fixed; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; font-family: Arial, sans-serif;">
+        Scanning for surface...<br>
+        Tap the purple ring to place model
+    </div>
+</body>
+</html>
